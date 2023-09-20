@@ -17,9 +17,10 @@ sub _initSDK()
     '------------------------------------
     ' Initalize Adobe Edge SDK
     '------------------------------------
-    m.adobeTaskNode = m.top.getScene().findNode("adobeTaskNode")
+    ' m.adobeTaskNode = m.top.getScene().findNode("adobeTaskNode")
 
-    m.aepSdk = AdobeAEPSDK(m.adobeTaskNode)
+    ' m.aepSdk = AdobeAEPSDK(m.adobeTaskNode)
+    m.aepSdk = AdobeAEPSDK(m.top)
 
 end sub
 
@@ -43,6 +44,8 @@ sub onButtonSelected()
         print result
         print context
     end sub, m)
+    m.xxxx = CreateObject("roSGNode", "GroupX")
+    print m.xxxx
 end sub
 
 function onKeyEvent(key as string, press as boolean)

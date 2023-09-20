@@ -59,7 +59,22 @@ function AdobeAEPSDKInit() as object
 
 end function
 
-function AdobeAEPSDK(taskNode as object) as object
+function AdobeAEPSDK(node as object) as object
+
+    taskNode = node.getScene().findNode("adobeTaskNode")
+
+    if taskNode = invalid
+        adobeTaskNode = CreateObject("roSGNode", "AEPSDKTask")
+        adobeTaskNode.id = "adobeTaskNode"
+        node.getScene().appendChild(adobeTaskNode)
+        taskNode = node.getScene().findNode("adobeTaskNode")
+    end if
+
+    if taskNode = invalid
+        _adb_logDebug("AdobeAEPSDK() - Failed to initialize the SDK, task node is invalid.")
+        return invalid
+    end if
+
     _adb_logInfo("AdobeAEPSDK() - Start to initialize SDK instance.")
     if taskNode = invalid then
         _adb_logDebug("AdobeAEPSDK() - Failed to initialize the SDK, task node is invalid.")

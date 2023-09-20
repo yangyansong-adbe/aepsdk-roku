@@ -1,4 +1,3 @@
-
 sub init()
     m.sendEventButton = m.top.findNode("sendEventButton2")
 

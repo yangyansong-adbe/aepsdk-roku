@@ -30,11 +30,14 @@ sub _initSDK()
   ' Initalize Adobe Edge SDK
   '------------------------------------
 
-  m.adobeTaskNode = CreateObject("roSGNode", "AEPSDKTask")
-  m.adobeTaskNode.id = "adobeTaskNode"
-  m.top.appendChild(m.adobeTaskNode)
+  x = m.top.getScene()
 
-  m.aepSdk = AdobeAEPSDK(m.adobeTaskNode)
+  ' m.adobeTaskNode = CreateObject("roSGNode", "AEPSDKTask")
+  ' m.adobeTaskNode.id = "adobeTaskNode"
+  ' m.top.appendChild(m.adobeTaskNode)
+
+  ' m.aepSdk = AdobeAEPSDK(m.adobeTaskNode)
+  m.aepSdk = AdobeAEPSDK(m.top)
   print "Adobe SDK version : " + m.aepSdk.getVersion()
   GetGlobalAA()._aepSdk = m.aepSdk
 
