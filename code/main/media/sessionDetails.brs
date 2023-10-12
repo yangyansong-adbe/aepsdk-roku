@@ -11,20 +11,4 @@
 ' *
 ' *****************************************************************************************
 
-' ********************************** MODULE: string utils *********************************
-
-function _adb_isEmptyOrInvalidString(str as dynamic) as boolean
-    if str = invalid or (type(str) <> "roString" and type(str) <> "String")
-        return true
-    end if
-
-    if Len(str) = 0
-        return true
-    end if
-
-    return false
-end function
-
-function _adb_isStringStartWith(string as string, prefix as string) as boolean
-    return string <> invalid and prefix <> invalid and string.left(prefix.len()) = prefix
-end function
+' ****************************** MODULE: Session Details **********************************

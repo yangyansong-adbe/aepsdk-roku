@@ -28,4 +28,3 @@ function _adb_isEmptyOrInvalidArray(input as dynamic) as boolean
 
     return false
 end function
-

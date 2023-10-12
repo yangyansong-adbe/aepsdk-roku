@@ -19,7 +19,10 @@ function AdobeAEPSDKConstants() as object
     return {
         CONFIGURATION: {
             EDGE_CONFIG_ID: "edge.configId",
-            EDGE_DOMAIN: "edge.domain"
+            EDGE_DOMAIN: "edge.domain",
+            MEDIA_CHANNEL: "edgemedia.channel",
+            MEDIA_PLAYER_NAME: "edgemedia.playerName",
+            MEDIA_APP_VERSION: "edgemedia.appVersion",
         },
         LOG_LEVEL: {
             VERBOSE: 0,
@@ -27,7 +30,93 @@ function AdobeAEPSDKConstants() as object
             INFO: 2,
             WARNING: 3,
             ERROR: 4
+        },
+        MEDIA: {
+            ' EVENT_TYPE: {
+            '     MEDIA_AD_BREAK_START: "MediaAdBreakStart"
+            '     MEDIA_AD_BREAK_COMPLETE: "MediaAdBreakComplete"
+            '     MEDIA_AD_BREAK_SKIP: "MediaAdBreakSkip"
+            '     MEDIA_AD_START: "MediaAdStart"
+            '     MEDIA_AD_COMPLETE: "MediaAdComplete"
+            '     MEDIA_AD_SKIP: "MediaAdSkip"
+            '     MEDIA_CHAPTER_START: "MediaChapterStart"
+            '     MEDIA_CHAPTER_COMPLETE: "MediaChapterComplete"
+            '     MEDIA_CHAPTER_SKIP: "MediaChapterSkip"
+            '     MEDIA_BUFFER_START: "MediaBufferStart"
+            '     MEDIA_BUFFER_COMPLETE: "MediaBufferComplete"
+            '     MEDIA_SEEK_START: "MediaSeekStart"
+            '     MEDIA_SEEK_COMPLETE: "MediaSeekComplete"
+            '     MEDIA_BITRATE_CHANGE: "MediaBitrateChange"
+            ' },
+            MEDIA_TYPE: {
+                VIDEO: 0,
+                AUDIO: 1,
+            },
         }
+
+    }
+end function
+
+' -------------------------------------------------------------
+' Media Roku SDK:
+' mediaType = invalid as dynamic
+'
+' AEP Mobile SDK:
+' resumed: Bool = false
+' prerollWaitingTime: Int = DEFAULT_PREROLL_WAITING_TIME_IN_MS
+' granularAdTracking: Bool = false
+' -------------------------------------------------------------
+function adb_media_init_mediainfo(name as string, id as string, length as double, streamType as string, mediaType = 0 as integer) as object
+    if mediaType = 1 then
+        mediaTypeString = "audio"
+    else
+        mediaTypeString = "video"
+    end if
+
+    return {
+        id: id,
+        name: name,
+        length: length,
+        streamType: streamType,
+        mediaType: mediaTypeString
+    }
+end function
+
+function adb_media_init_adinfo(name as string, id as string, position as double, length as double) as object
+    return {
+        id: id,
+        name: name,
+        length: length,
+        position: position
+    }
+end function
+
+function adb_media_init_chapterinfo(name as string, position as double, length as double, startTime as double) as object
+    return {
+        name: name,
+        length: length,
+        position: position,
+        startTime: startTime
+    }
+end function
+
+function adb_media_init_adbreakinfo(name as string, startTime as double, position as double) as object
+    return {
+        name: name,
+        startTime: startTime,
+        position: position
+    }
+end function
+' -------------------------------------------------------------
+' Media Roku SDK:
+' adb_media_init_qosinfo()
+' -------------------------------------------------------------
+function adb_media_init_qoeinfo(bitrate as double, startupTime as double, fps as double, droppedFrames as double) as object
+    return {
+        bitrate: bitrate,
+        fps: fps,
+        droppedFrames: droppedFrames,
+        startupTime: startupTime
     }
 end function
 
@@ -149,6 +238,7 @@ function AdobeAEPSDKInit() as object
             end if
             event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SET_CONFIGURATION, configuration)
             m._private.dispatchEvent(event)
+            m._private.latestConfiguration.Append(configuration)
         end function,
 
         ' *************************************************************************************
@@ -223,12 +313,275 @@ function AdobeAEPSDKInit() as object
             data[m._private.cons.EVENT_DATA_KEY.ecid] = ecid
             event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SET_EXPERIENCE_CLOUD_ID, data)
             m._private.dispatchEvent(event)
+        end function,
+
+        ' ****************************************************************************************************
+        '                                           Media APIs
+        ' ****************************************************************************************************
+
+        _createMediaSession: function(xdmData as object) as void
+            _adb_logDebug("API: _createMediaSession()")
+            ' TODO: validate input
+
+            m._private.mediaSession.startNewSession()
+            m._sendMediaEvent(xdmData)
+
+        end function,
+
+        _sendMediaEvent: function(xdmData as object) as void
+            _adb_logDebug("API: _sendMediaEvent()")
+            ' TODO: validate input
+
+            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(xdmData.xdm.eventType)
+
+            data = {
+                clientSessionId: sessionId,
+                timestampInISO8601: _adb_ISO8601_timestamp(),
+                param: xdmData
+            }
+            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SEND_MEDIA_EVENT, data)
+            m._private.dispatchEvent(event)
+
+            if xdmData.xdm.eventType = "media.sessionEnd"
+                m._private.mediaSession.endSession()
+            end if
+        end function,
+
+        mediaTrackSessionStart: function(mediaInfo as object, ContextData = invalid as object) as void
+            _adb_logDebug("API: mediaTrackSessionStart()")
+            ' TODO: validate mediaInfo
+            ' TODO: add ContextData to xdmData
+            configuration = m._private.latestConfiguration
+            channel = configuration["edgemedia.channel"]
+            playerName = configuration["edgemedia.playerName"]
+            appVersion = configuration["edgemedia.appVersion"]
+
+            xdmData = {
+                "xdm": {
+                    "eventType": "media.sessionStart"
+                    "mediaCollection": {
+                        "playhead": 0,
+                        "sessionDetails": {
+                            "playerName": playerName,
+                            "streamType": mediaInfo.mediaType,
+                            "friendlyName": mediaInfo.name,
+                            "hasResume": false,
+                            "channel": channel,
+                            "appVersion": appVersion,
+                            "name": mediaInfo.id,
+                            "length": mediaInfo.length,
+                            "contentType": mediaInfo.streamType
+                        }
+                    }
+                }
+            }
+            m._createMediaSession(xdmData)
+        end function,
+
+        mediaTrackSessionEnd: function() as void
+            _adb_logDebug("API: mediaTrackSessionEnd()")
+
+            xdmData = {
+                xdm: {
+                    "eventType": "media.sessionEnd",
+                    "mediaCollection": {
+                        ' TODO: update playhead
+                        "playhead": 100,
+                        ' "sessionID": sessionId
+                    }
+                }
+            }
+
+            m._sendMediaEvent(xdmData)
+            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.SESSION_END)
+            ' data = {
+            '     mediaEventName: m._private.cons.MEDIA_EVENT_NAME.SESSION_END,
+            '     timestampInISO8601: _adb_ISO8601_timestamp(),
+            '     clientSessionId: sessionId
+            ' }
+            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            ' m._private.dispatchEvent(event)
+
+        end function,
+
+        ' depracated API:
+        ' mediaTrackLoad
+        ' mediaTrackUnload
+        ' trackStart
+
+        mediaTrackPlay: function() as void
+            _adb_logDebug("API: mediaTrackPlay()")
+            xdmData = {
+                xdm: {
+                    "eventType": "media.play",
+                    "mediaCollection": {
+                        ' TODO: update playhead
+                        "playhead": 0,
+                        ' "sessionID": sessionId
+                    }
+                }
+            }
+
+            m._sendMediaEvent(xdmData)
+            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.PLAY)
+            ' data = {
+            '     mediaEventName: m._private.cons.MEDIA_EVENT_NAME.PLAY,
+            '     timestampInISO8601: _adb_ISO8601_timestamp(),
+            '     clientSessionId: sessionId
+            ' }
+            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            ' m._private.dispatchEvent(event)
+        end function,
+
+        mediaTrackPause: function() as void
+            _adb_logDebug("API: mediaTrackPause()")
+            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.PAUSE)
+            data = {
+                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.PAUSE,
+                timestampInISO8601: _adb_ISO8601_timestamp(),
+                clientSessionId: sessionId
+            }
+            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            m._private.dispatchEvent(event)
+        end function,
+
+        mediaTrackComplete: function() as void
+            _adb_logDebug("API: mediaTrackComplete()")
+            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.COMPLETE)
+            data = {
+                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.COMPLETE,
+                timestampInISO8601: _adb_ISO8601_timestamp(),
+                clientSessionId: sessionId
+            }
+            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            m._private.dispatchEvent(event)
+        end function,
+
+        mediaTrackEvent: function(eventName as string, data = invalid as object, ContextData = invalid as object) as void
+            _adb_logDebug("API: mediaTrackEvent()")
+            xdmData = {
+                xdm: {
+                    "eventType": eventName,
+                    "mediaCollection": {
+                        ' TODO: update playhead
+                        "playhead": 0,
+                        ' "sessionID": sessionId
+                    }
+                }
+            }
+
+            ' if eventName = "media.play"
+            ' else if eventName = "media.bufferStart"
+            ' else if eventName = "media.x"
+            ' end if
+
+            m._sendMediaEvent(xdmData)
+            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(eventName)
+            ' data = {
+            '     mediaEventName: eventName,
+            '     timestampInISO8601: _adb_ISO8601_timestamp(),
+            '     clientSessionId: sessionId,
+            '     params: {
+            '         data: data,
+            '         contextData: ContextData
+            '     }
+            ' }
+            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            ' m._private.dispatchEvent(event)
+        end function,
+
+        mediaTrackError: function(errorId as string, errorSource as string) as void
+            _adb_logDebug("API: mediaTrackError()")
+            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.ERROR)
+            data = {
+                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.ERROR,
+                timestampInISO8601: _adb_ISO8601_timestamp(),
+                clientSessionId: sessionId,
+                params: {
+                    errorId: errorId,
+                    errorSource: errorSource
+                }
+            }
+            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            m._private.dispatchEvent(event)
+        end function,
+
+        mediaUpdatePlayhead: function(position as integer) as void
+            _adb_logDebug("API: mediaUpdatePlayhead()")
+            xdmData = {
+                xdm: {
+                    "eventType": "media.ping",
+                    "mediaCollection": {
+                        "playhead": position,
+                        ' "sessionID": sessionId
+                    }
+                }
+            }
+            m._sendMediaEvent(xdmData)
+            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.PLAYHEAD_UPDATE)
+            ' data = {
+            '     mediaEventName: m._private.cons.MEDIA_EVENT_NAME.PLAYHEAD_UPDATE,
+            '     timestampInISO8601: _adb_ISO8601_timestamp(),
+            '     clientSessionId: sessionId,
+            '     params: {
+            '         playheadPosition: position
+            '     }
+            ' }
+            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            ' m._private.dispatchEvent(event)
+        end function,
+
+        ' -------------------------------------------------------------
+        ' Media Roku SDK:
+        ' mediaUpdateQoS()
+        ' -------------------------------------------------------------
+        mediaUpdateQoE: function(data as object) as void
+            _adb_logDebug("API: mediaUpdatePlayhead()")
+            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.QOE_UPDATE)
+            data = {
+                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.QOE_UPDATE,
+                timestampInISO8601: _adb_ISO8601_timestamp(),
+                clientSessionId: sessionId,
+                params: {
+                    data: data
+                }
+            }
+            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            m._private.dispatchEvent(event)
         end function
 
         ' ********************************
         ' Add private memebers below
         ' ********************************
         _private: {
+            mediaSession: {
+                _clientSessionId: invalid,
+                _trackActionQueue: [],
+
+                startNewSession: function() as string
+                    m._clientSessionId = _adb_generate_UUID()
+                    m._trackActionQueue = []
+                    return m._clientSessionId
+                end function,
+
+                endSession: sub()
+                    m._clientSessionId = invalid
+
+                    print "We can start the validation process here:"
+                    print "The session is ended, the media action series is -> "
+                    for each action in m._trackActionQueue
+                        print "media event: " + action
+                    end for
+                    m._trackActionQueue = []
+                end sub,
+
+                getClientSessionIdAndRecordAction: function(action as string) as string
+                    m._trackActionQueue.Push(action)
+                    return m._clientSessionId
+                end function,
+
+            },
+            latestConfiguration: {},
             ' constants
             cons: _adb_InternalConstants(),
             ' for testing purpose
