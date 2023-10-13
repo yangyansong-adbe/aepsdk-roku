@@ -41,18 +41,14 @@ function _adb_MediaModule(configurationModule as object, identityModule as objec
         '     param: { xdm: {} }
         ' }
         processEvent: sub(requestId as string, eventData as object, timestampInMillis as longinteger)
-            ' m._edgeRequestWorker.queue(requestId, xdmData, timestampInMillis)
             mediaEventType = eventData.param.xdm.eventType
             clientSessionId = eventData.clientSessionId
             timestampInISO8601 = eventData.timestampInISO8601
 
             if mediaEventType = "media.sessionStart"
                 m._sessionStart(requestId, clientSessionId, eventData.param, timestampInISO8601, timestampInMillis)
-                ' else if mediaEventType = "media.sessionend"
-                '     m._sessionEnd(requestId, clientSessionId, timestampInISO8601, timestampInMillis)
             else
                 m._actionInSession(requestId, eventData, timestampInISO8601, timestampInMillis)
-                ' _adb_logWarning("handleEvent() - event is invalid: " + FormatJson(event))
             end if
         end sub,
 
@@ -61,9 +57,15 @@ function _adb_MediaModule(configurationModule as object, identityModule as objec
             meta = {}
             'https://edge.adobedc.net/ee/va/v1/sessionStart?configId=xx&requestId=xx
             path = "/ee/va/v1/sessionStart"
-
+            mediaConfig = m._configurationModule.getMediaConfiguration()
+            channel = mediaConfig["edgemedia.channel"]
+            playerName = mediaConfig["edgemedia.playerName"]
+            appVersion = mediaConfig["edgemedia.appVersion"]
             xdmData.xdm["_id"] = _adb_generate_UUID()
             xdmData.xdm["timestamp"] = timestampInISO8601
+            xdmData.xdm["mediaCollection"]["sessionDetails"]["playerName"] = playerName
+            xdmData.xdm["mediaCollection"]["sessionDetails"]["channel"] = channel
+            xdmData.xdm["mediaCollection"]["sessionDetails"]["appVersion"] = appVersion
             'session start => (clientSessionId = requestId)
             m._edgeRequestWorker.queue(clientSessionId, xdmData, timestampInMillis, meta, path)
             m._kickRequestQueue()
@@ -174,20 +176,27 @@ end function
 function _adb_EdgePathForAction(eventName as string, location as string) as dynamic
     if eventName = "media.play"
         return "/ee/" + location + "/va/v1/play"
+    else if eventName = "media.bufferStart"
+        return "/ee/" + location + "/va/v1/bufferStart"
+    else if eventName = "media.ping"
+        return "/ee/" + location + "/va/v1/ping"
+    else if eventName = "media.pauseStart"
+        return "/ee/" + location + "/va/v1/pauseStart"
+    else if eventName = "media.sessionComplete"
+        return "/ee/" + location + "/va/v1/sessionComplete"
+    else if eventName = "media.error"
+        return "/ee/" + location + "/va/v1/error"
+    else if eventName = "media.sessionEnd"
+        return "/ee/" + location + "/va/v1/sessionEnd"
+
+        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.QOE_UPDATE
+        '     return "/ee/va/v1/qoeupdate"
         ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.PAUSE
         '     return "/ee/va/v1/pauseStart"
         ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.COMPLETE
         '     return "/ee/va/v1/sessionComplete"
         ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.ERROR
         '     return "/ee/va/v1/error"
-    else if eventName = "media.ping"
-        return "/ee/" + location + "/va/v1/ping"
-    else if eventName = "media.sessionEnd"
-        return "/ee/" + location + "/va/v1/sessionEnd"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.QOE_UPDATE
-        '     return "/ee/va/v1/qoeupdate"
-    else if eventName = "media.bufferStart"
-        return "/ee/" + location + "/va/v1/bufferStart"
         ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.BUFFER_COMPLETE
         '     return "/ee/va/v1/buffercomplete"
         ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.SEEK_START

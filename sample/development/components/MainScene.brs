@@ -38,9 +38,7 @@ sub _initSDK()
 
   ADB_CONSTANTS = AdobeAEPSDKConstants()
   m.aepSdk.setLogLevel(ADB_CONSTANTS.LOG_LEVEL.VERBOSE)
-  ' MEDIA_CHANNEL: "edgemedia.channel",
-  ' MEDIA_PLAYER_NAME: "edgemedia.playerName",
-  ' MEDIA_APP_VERSION: "edgemedia.appVersion",
+
   configuration = {
     "edgemedia.channel": "channel_test",
     "edgemedia.playerName": "player_test",
@@ -186,9 +184,9 @@ sub onVideoPlayerStateChange()
   else if m.video.state = "stopped"
     m.aepSdk.mediaTrackSessionEnd()
   else if m.video.state = "finished"
-    '
+    m.aepSdk.mediaTrackComplete()
   else if m.video.state = "paused"
-    '
+    m.aepSdk.mediaTrackPause()
   else
     print "onVideoPlayerStateChange: " + m.video.state
   end if

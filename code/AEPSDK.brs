@@ -238,7 +238,6 @@ function AdobeAEPSDKInit() as object
             end if
             event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SET_CONFIGURATION, configuration)
             m._private.dispatchEvent(event)
-            m._private.latestConfiguration.Append(configuration)
         end function,
 
         ' *************************************************************************************
@@ -322,7 +321,7 @@ function AdobeAEPSDKInit() as object
         _createMediaSession: function(xdmData as object) as void
             _adb_logDebug("API: _createMediaSession()")
             ' TODO: validate input
-
+            m._private._currentPlayHead = 0
             m._private.mediaSession.startNewSession()
             m._sendMediaEvent(xdmData)
 
@@ -331,12 +330,12 @@ function AdobeAEPSDKInit() as object
         _sendMediaEvent: function(xdmData as object) as void
             _adb_logDebug("API: _sendMediaEvent()")
             ' TODO: validate input
-
-            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(xdmData.xdm.eventType)
+            timestamp = _adb_ISO8601_timestamp()
+            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(xdmData.xdm.eventType, timestamp, xdmData)
 
             data = {
                 clientSessionId: sessionId,
-                timestampInISO8601: _adb_ISO8601_timestamp(),
+                timestampInISO8601: timestamp,
                 param: xdmData
             }
             event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SEND_MEDIA_EVENT, data)
@@ -351,10 +350,6 @@ function AdobeAEPSDKInit() as object
             _adb_logDebug("API: mediaTrackSessionStart()")
             ' TODO: validate mediaInfo
             ' TODO: add ContextData to xdmData
-            configuration = m._private.latestConfiguration
-            channel = configuration["edgemedia.channel"]
-            playerName = configuration["edgemedia.playerName"]
-            appVersion = configuration["edgemedia.appVersion"]
 
             xdmData = {
                 "xdm": {
@@ -362,12 +357,12 @@ function AdobeAEPSDKInit() as object
                     "mediaCollection": {
                         "playhead": 0,
                         "sessionDetails": {
-                            "playerName": playerName,
+                            "playerName": "",
+                            "channel": "",
+                            "appVersion": "",
                             "streamType": mediaInfo.mediaType,
                             "friendlyName": mediaInfo.name,
                             "hasResume": false,
-                            "channel": channel,
-                            "appVersion": appVersion,
                             "name": mediaInfo.id,
                             "length": mediaInfo.length,
                             "contentType": mediaInfo.streamType
@@ -380,91 +375,82 @@ function AdobeAEPSDKInit() as object
 
         mediaTrackSessionEnd: function() as void
             _adb_logDebug("API: mediaTrackSessionEnd()")
-
+            position = m._private._currentPlayHead
             xdmData = {
                 xdm: {
                     "eventType": "media.sessionEnd",
                     "mediaCollection": {
                         ' TODO: update playhead
-                        "playhead": 100,
+                        "playhead": position,
                         ' "sessionID": sessionId
                     }
                 }
             }
 
             m._sendMediaEvent(xdmData)
-            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.SESSION_END)
-            ' data = {
-            '     mediaEventName: m._private.cons.MEDIA_EVENT_NAME.SESSION_END,
-            '     timestampInISO8601: _adb_ISO8601_timestamp(),
-            '     clientSessionId: sessionId
-            ' }
-            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            ' m._private.dispatchEvent(event)
 
         end function,
 
-        ' depracated API:
-        ' mediaTrackLoad
-        ' mediaTrackUnload
-        ' trackStart
-
         mediaTrackPlay: function() as void
             _adb_logDebug("API: mediaTrackPlay()")
+            position = m._private._currentPlayHead
             xdmData = {
                 xdm: {
                     "eventType": "media.play",
                     "mediaCollection": {
                         ' TODO: update playhead
-                        "playhead": 0,
+                        "playhead": position,
                         ' "sessionID": sessionId
                     }
                 }
             }
 
             m._sendMediaEvent(xdmData)
-            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.PLAY)
-            ' data = {
-            '     mediaEventName: m._private.cons.MEDIA_EVENT_NAME.PLAY,
-            '     timestampInISO8601: _adb_ISO8601_timestamp(),
-            '     clientSessionId: sessionId
-            ' }
-            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            ' m._private.dispatchEvent(event)
         end function,
 
         mediaTrackPause: function() as void
             _adb_logDebug("API: mediaTrackPause()")
-            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.PAUSE)
-            data = {
-                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.PAUSE,
-                timestampInISO8601: _adb_ISO8601_timestamp(),
-                clientSessionId: sessionId
+            position = m._private._currentPlayHead
+            xdmData = {
+                xdm: {
+                    "eventType": "media.pauseStart",
+                    "mediaCollection": {
+                        ' TODO: update playhead
+                        "playhead": position,
+                        ' "sessionID": sessionId
+                    }
+                }
             }
-            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            m._private.dispatchEvent(event)
+
+            m._sendMediaEvent(xdmData)
         end function,
 
         mediaTrackComplete: function() as void
             _adb_logDebug("API: mediaTrackComplete()")
-            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.COMPLETE)
-            data = {
-                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.COMPLETE,
-                timestampInISO8601: _adb_ISO8601_timestamp(),
-                clientSessionId: sessionId
+            position = m._private._currentPlayHead
+            xdmData = {
+                xdm: {
+                    "eventType": "media.sessionComplete",
+                    "mediaCollection": {
+                        ' TODO: update playhead
+                        "playhead": position,
+                        ' "sessionID": sessionId
+                    }
+                }
             }
-            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            m._private.dispatchEvent(event)
+
+            m._sendMediaEvent(xdmData)
         end function,
 
         mediaTrackEvent: function(eventName as string, data = invalid as object, ContextData = invalid as object) as void
             _adb_logDebug("API: mediaTrackEvent()")
+            position = m._private._currentPlayHead
             xdmData = {
                 xdm: {
                     "eventType": eventName,
                     "mediaCollection": {
                         ' TODO: update playhead
-                        "playhead": 0,
+                        "playhead": position,
                         ' "sessionID": sessionId
                     }
                 }
@@ -476,38 +462,34 @@ function AdobeAEPSDKInit() as object
             ' end if
 
             m._sendMediaEvent(xdmData)
-            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(eventName)
-            ' data = {
-            '     mediaEventName: eventName,
-            '     timestampInISO8601: _adb_ISO8601_timestamp(),
-            '     clientSessionId: sessionId,
-            '     params: {
-            '         data: data,
-            '         contextData: ContextData
-            '     }
-            ' }
-            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            ' m._private.dispatchEvent(event)
         end function,
 
         mediaTrackError: function(errorId as string, errorSource as string) as void
             _adb_logDebug("API: mediaTrackError()")
-            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.ERROR)
-            data = {
-                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.ERROR,
-                timestampInISO8601: _adb_ISO8601_timestamp(),
-                clientSessionId: sessionId,
-                params: {
-                    errorId: errorId,
-                    errorSource: errorSource
+            position = m._private._currentPlayHead
+            xdmData = {
+                xdm: {
+                    "eventType": "media.error",
+                    "mediaCollection": {
+                        "playhead": position,
+                        "qoeDataDetails": {
+                            "bitrate": 35000,
+                            "droppedFrames": 30
+                        },
+                        "errorDetails": {
+                            "name": errorId,
+                            "source": errorSource
+                        }
+                        ' "sessionID": sessionId
+                    }
                 }
             }
-            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            m._private.dispatchEvent(event)
+            m._sendMediaEvent(xdmData)
         end function,
 
         mediaUpdatePlayhead: function(position as integer) as void
             _adb_logDebug("API: mediaUpdatePlayhead()")
+            m._private. _currentPlayHead = position
             xdmData = {
                 xdm: {
                     "eventType": "media.ping",
@@ -518,36 +500,30 @@ function AdobeAEPSDKInit() as object
                 }
             }
             m._sendMediaEvent(xdmData)
-            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.PLAYHEAD_UPDATE)
-            ' data = {
-            '     mediaEventName: m._private.cons.MEDIA_EVENT_NAME.PLAYHEAD_UPDATE,
-            '     timestampInISO8601: _adb_ISO8601_timestamp(),
-            '     clientSessionId: sessionId,
-            '     params: {
-            '         playheadPosition: position
-            '     }
-            ' }
-            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            ' m._private.dispatchEvent(event)
         end function,
-
+        ' depracated API:
+        ' mediaTrackLoad
+        ' mediaTrackUnload
+        ' trackStart
         ' -------------------------------------------------------------
         ' Media Roku SDK:
         ' mediaUpdateQoS()
         ' -------------------------------------------------------------
         mediaUpdateQoE: function(data as object) as void
             _adb_logDebug("API: mediaUpdatePlayhead()")
-            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.QOE_UPDATE)
-            data = {
-                mediaEventName: m._private.cons.MEDIA_EVENT_NAME.QOE_UPDATE,
-                timestampInISO8601: _adb_ISO8601_timestamp(),
-                clientSessionId: sessionId,
-                params: {
-                    data: data
-                }
-            }
-            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
-            m._private.dispatchEvent(event)
+            ' TODO:
+            position = m._private._currentPlayHead
+            ' sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(m._private.cons.MEDIA_EVENT_NAME.QOE_UPDATE)
+            ' data = {
+            '     mediaEventName: m._private.cons.MEDIA_EVENT_NAME.QOE_UPDATE,
+            '     timestampInISO8601: _adb_ISO8601_timestamp(),
+            '     clientSessionId: sessionId,
+            '     params: {
+            '         data: data
+            '     }
+            ' }
+            ' event = _adb_RequestEvent(m._private.cons.PUBLIC_API.MEDIA_API, data)
+            ' m._private.dispatchEvent(event)
         end function
 
         ' ********************************
@@ -557,6 +533,7 @@ function AdobeAEPSDKInit() as object
             mediaSession: {
                 _clientSessionId: invalid,
                 _trackActionQueue: [],
+                _currentPlayHead: 0,
 
                 startNewSession: function() as string
                     m._clientSessionId = _adb_generate_UUID()
@@ -567,21 +544,27 @@ function AdobeAEPSDKInit() as object
                 endSession: sub()
                     m._clientSessionId = invalid
 
-                    print "We can start the validation process here:"
-                    print "The session is ended, the media action series is -> "
-                    for each action in m._trackActionQueue
-                        print "media event: " + action
+                    lines = []
+                    lines.Push("We can start the validation process here:")
+                    lines.Push("The session is ended, the media action series is -> ")
+                    for each obj in m._trackActionQueue
+                        lines.Push("action: " + obj.action + ", timestamp: " + obj.timestamp + ", param: " + FormatJson(obj.param))
                     end for
+                    output = lines.Join(chr(10))
+                    print output
                     m._trackActionQueue = []
                 end sub,
 
-                getClientSessionIdAndRecordAction: function(action as string) as string
-                    m._trackActionQueue.Push(action)
+                getClientSessionIdAndRecordAction: function(action as string, timestamp = "" as string, param = {} as object) as string
+                    m._trackActionQueue.Push({
+                        action: action,
+                        timestamp: timestamp,
+                        param: param
+                    })
                     return m._clientSessionId
                 end function,
 
             },
-            latestConfiguration: {},
             ' constants
             cons: _adb_InternalConstants(),
             ' for testing purpose
