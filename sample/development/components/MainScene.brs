@@ -23,6 +23,7 @@ sub init()
   setContent()
 
   m.test_shutdown = false
+  m.video_position = 0
 
   _initSDK()
 end sub
@@ -147,11 +148,29 @@ sub _testMedia()
   m.video.control = "play"
   m.video.setFocus(true)
 
-  mInfo = adb_media_init_mediainfo("test_media_name", "test_media_id", 100, "vod")
-  mediaContextData = {}
-  mediaContextData["videotype"] = "episode"
-  m.aepSdk.mediaTrackSessionStart(mInfo, mediaContextData)
-  ' m.aepSdk.
+  ' mInfo = adb_media_init_mediainfo("test_media_name", "test_media_id", 100, "vod")
+  ' mediaContextData = {}
+  ' mediaContextData["videotype"] = "episode"
+  ' m.aepSdk.mediaTrackSessionStart(mInfo, mediaContextData)
+  m.video_position = 0
+
+  m.aepSdk.createMediaSession({
+    "xdm": {
+      "eventType": "media.sessionStart"
+      "mediaCollection": {
+        "playhead": 0,
+        "sessionDetails": {
+          "streamType": "video",
+          "friendlyName": "test_media_name",
+          "hasResume": false,
+          "name": "test_media_id",
+          "length": 100,
+          "contentType": "vod"
+        }
+      }
+    }
+  })
+
 end sub
 
 'Set your information here
@@ -176,17 +195,75 @@ sub setContent()
 end sub
 
 sub onVideoPlayerStateChange()
+  position = m.video_position
   if m.video.state = "error"
+    m.aepSdk.sendMediaEvent({
+      "xdm": {
+        "eventType": "media.error",
+        "mediaCollection": {
+          "playhead": position,
+          "qoeDataDetails": {
+            "bitrate": 35000,
+            "droppedFrames": 30
+          },
+          "errorDetails": {
+            "name": "test-buffer-start",
+            "source": "player"
+          }
+        }
+      }
+    })
   else if m.video.state = "buffering"
-    m.aepSdk.mediaTrackEvent("media.bufferStart")
+    ' m.aepSdk.mediaTrackEvent("media.bufferStart")
+    m.aepSdk.sendMediaEvent({
+      "xdm": {
+        "eventType": "media.bufferStart",
+        "mediaCollection": {
+          "playhead": position,
+        }
+      }
+    })
+
   else if m.video.state = "playing"
-    m.aepSdk.mediaTrackPlay()
+    ' m.aepSdk.mediaTrackPlay()
+    m.aepSdk.sendMediaEvent({
+      "xdm": {
+        "eventType": "media.play",
+        "mediaCollection": {
+          "playhead": position,
+        }
+      }
+    })
   else if m.video.state = "stopped"
-    m.aepSdk.mediaTrackSessionEnd()
+    ' m.aepSdk.mediaTrackSessionEnd()
+    m.aepSdk.sendMediaEvent({
+      "xdm": {
+        "eventType": "media.sessionEnd",
+        "mediaCollection": {
+          "playhead": position,
+        }
+      }
+    })
   else if m.video.state = "finished"
-    m.aepSdk.mediaTrackComplete()
+    ' m.aepSdk.mediaTrackComplete()
+    m.aepSdk.sendMediaEvent({
+      "xdm": {
+        "eventType": "media.sessionComplete",
+        "mediaCollection": {
+          "playhead": position,
+        }
+      }
+    })
   else if m.video.state = "paused"
-    m.aepSdk.mediaTrackPause()
+    ' m.aepSdk.mediaTrackPause()
+    m.aepSdk.sendMediaEvent({
+      "xdm": {
+        "eventType": "media.pauseStart",
+        "mediaCollection": {
+          "playhead": position,
+        }
+      }
+    })
   else
     print "onVideoPlayerStateChange: " + m.video.state
   end if
@@ -194,7 +271,17 @@ end sub
 
 sub onPositionChange()
   print "Video Player Position Changed to : " m.video.position
-  m.aepSdk.mediaUpdatePlayhead(m.video.position)
+  ' m.aepSdk.mediaUpdatePlayhead(m.video.position)
+  position = m.video_position
+  m.aepSdk.sendMediaEvent({
+    "xdm": {
+      "eventType": "media.ping",
+      "mediaCollection": {
+        "playhead": position,
+      }
+    }
+  })
+  m.video_position = m.video.position
   ' print
 end sub
 
