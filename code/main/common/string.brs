@@ -28,3 +28,17 @@ end function
 function _adb_isStringStartWith(string as string, prefix as string) as boolean
     return string <> invalid and prefix <> invalid and string.left(prefix.len()) = prefix
 end function
+
+function _adb_isStringInArray(str as string, array as object) as boolean
+    if _adb_isEmptyOrInvalidString(str) or _adb_isEmptyOrInvalidArray(array)
+        return false
+    end if
+
+    for each item in array
+        if item = str
+            return true
+        end if
+    end for
+
+    return false
+end function

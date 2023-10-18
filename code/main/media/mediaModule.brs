@@ -28,7 +28,9 @@ function _adb_MediaModule(configurationModule as object, identityModule as objec
     end if
 
     module = _adb_AdobeObject("com.adobe.module.media")
+
     module.Append({
+        _MEDIA_EVENT_TYPES: ["play", "ping", "bitrateChange", "bufferStart", "pauseStart", "adBreakStart", "adStart", "adComplete", "adSkip", "adBreakComplete", "chapterStart", "chapterComplete", "chapterSkip", "error", "sessionEnd", "sessionComplete", "statesUpdate"],
         _configurationModule: configurationModule,
         _identityModule: identityModule,
         _edgeRequestWorker: _adb_EdgeRequestWorker(),
@@ -46,13 +48,14 @@ function _adb_MediaModule(configurationModule as object, identityModule as objec
             timestampInISO8601 = eventData.timestampInISO8601
 
             if mediaEventType = "media.sessionStart"
-                m._sessionStart(requestId, clientSessionId, eventData.param, timestampInISO8601, timestampInMillis)
+                m._sessionStart(requestId, clientSessionId, eventData, timestampInISO8601, timestampInMillis)
             else
-                m._actionInSession(requestId, eventData, timestampInISO8601, timestampInMillis)
+                m._actionInSession(requestId, clientSessionId, eventData, timestampInISO8601, timestampInMillis)
             end if
         end sub,
 
-        _sessionStart: sub(requestId as string, clientSessionId as string, xdmData as object, timestampInISO8601 as string, timestampInMillis as longinteger)
+        _sessionStart: sub(requestId as string, clientSessionId as string, eventData as object, timestampInISO8601 as string, timestampInMillis as longinteger)
+            xdmData = eventData.param
             m._sessionManager.createNewSession(clientSessionId)
             meta = {}
             'https://edge.adobedc.net/ee/va/v1/sessionStart?configId=xx&requestId=xx
@@ -71,9 +74,8 @@ function _adb_MediaModule(configurationModule as object, identityModule as objec
             m._kickRequestQueue()
         end sub,
 
-        _actionInSession: sub(requestId as string, eventData as object, timestampInISO8601 as string, timestampInMillis as longinteger)
+        _actionInSession: sub(requestId as string, clientSessionId as string, eventData as object, timestampInISO8601 as string, timestampInMillis as longinteger)
             mediaEventType = eventData.param.xdm.eventType
-            clientSessionId = eventData.clientSessionId
 
             sessionId = m._sessionManager.getSessionId(clientSessionId)
             location = m._sessionManager.getLocation(clientSessionId)
@@ -83,7 +85,7 @@ function _adb_MediaModule(configurationModule as object, identityModule as objec
                 return
             else
                 meta = {}
-                path = _adb_EdgePathForAction(mediaEventType, location)
+                path = _adb_EdgePathForAction(mediaEventType, location, m._MEDIA_EVENT_TYPES)
                 if _adb_isEmptyOrInvalidString(path)
                     _adb_logError("_actionInSession() - mediaEventName is invalid: " + mediaEventType)
                     return
@@ -173,61 +175,15 @@ function _adb_MediaModule(configurationModule as object, identityModule as objec
     return module
 end function
 
-function _adb_EdgePathForAction(eventName as string, location as string) as dynamic
-    if eventName = "media.play"
-        return "/ee/" + location + "/va/v1/play"
-    else if eventName = "media.bufferStart"
-        return "/ee/" + location + "/va/v1/bufferStart"
-    else if eventName = "media.ping"
-        return "/ee/" + location + "/va/v1/ping"
-    else if eventName = "media.pauseStart"
-        return "/ee/" + location + "/va/v1/pauseStart"
-    else if eventName = "media.sessionComplete"
-        return "/ee/" + location + "/va/v1/sessionComplete"
-    else if eventName = "media.error"
-        return "/ee/" + location + "/va/v1/error"
-    else if eventName = "media.sessionEnd"
-        return "/ee/" + location + "/va/v1/sessionEnd"
+function _adb_EdgePathForAction(eventName as string, location as string, supportedTypes as object) as dynamic
 
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.QOE_UPDATE
-        '     return "/ee/va/v1/qoeupdate"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.PAUSE
-        '     return "/ee/va/v1/pauseStart"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.COMPLETE
-        '     return "/ee/va/v1/sessionComplete"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.ERROR
-        '     return "/ee/va/v1/error"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.BUFFER_COMPLETE
-        '     return "/ee/va/v1/buffercomplete"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.SEEK_START
-        '     return "/ee/va/v1/seekStart"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.SEEK_COMPLETE
-        '     return "/ee/va/v1/seekComplete"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.ADBREAK_START
-        '     return "/ee/va/v1/adBreakStart"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.ADBREAK_COMPLETE
-        '     return "/ee/va/v1/adBreakComplete"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.AD_START
-        '     return "/ee/va/v1/adStart"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.AD_SKIP
-        '     return "/ee/va/v1/adSkip"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.AD_COMPLETE
-        '     return "/ee/va/v1/adComplete"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.CHAPTER_START
-        '     return "/ee/va/v1/chapterStart"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.CHAPTER_SKIP
-        '     return "/ee/va/v1/chapterSkip"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.CHAPTER_COMPLETE
-        '     return "/ee/va/v1/chapterComplete"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.BITRATE_CHANGE
-        '     return "/ee/va/v1/bitrateChange"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.STATE_START
-        '     return "/ee/va/v1/stateStart"
-        ' else if eventName = m._CONSTANTS.MEDIA_EVENT_NAME.STATE_END
-        '     return "/ee/va/v1/stateEnd"
+    if _adb_isStringInArray(eventName, supportedTypes) then
+        return "/ee/" + location + "/va/v1/" + eventName
     else
+        print "unsupported event type"
         return invalid
     end if
+
 end function
 
 function _adb_MediaSessionManager() as object
