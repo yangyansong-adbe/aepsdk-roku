@@ -55,8 +55,21 @@ function AdobeAEPSDKInit() as object
     ' create the SDK thread
     _adb_createTaskNode()
 
+    return AdobeAEPSDK(_adb_retrieveTaskNode())
+
+end function
+
+function AdobeAEPSDK(taskNode as object) as object
+    _adb_logInfo("AdobeAEPSDK() - Start to initialize SDK instance.")
+    if taskNode = invalid then
+        _adb_logDebug("AdobeAEPSDK() - Failed to initialize the SDK, task node is invalid.")
+        return invalid
+    end if
+
+    _adb_setTaskNode(taskNode)
+
     if _adb_retrieveTaskNode() = invalid then
-        _adb_logDebug("AdobeAEPSDKInit() - Failed to initialize the SDK, task node is invalid.")
+        _adb_logDebug("AdobeAEPSDK() - Failed to initialize the SDK, task node is invalid.")
         return invalid
     end if
 
@@ -64,6 +77,7 @@ function AdobeAEPSDKInit() as object
     _adb_observeTaskNode("responseEvent", "_adb_handleResponseEvent")
 
     GetGlobalAA()._adb_public_api = {
+        id: _adb_generate_UUID(),
 
         ' ********************************
         '
@@ -171,6 +185,7 @@ function AdobeAEPSDKInit() as object
 
         sendEvent: function(xdmData as object, callback = _adb_defaultCallback as function, context = invalid as dynamic) as void
             _adb_logDebug("API: sendEvent()")
+            _adb_logInfo("API: sendEvent()" + m.id)
             if _adb_isEmptyOrInvalidMap(xdmData) then
                 _adb_logError("sendEvent() - Cannot send event, invalid XDM data")
                 return
@@ -223,6 +238,20 @@ function AdobeAEPSDKInit() as object
             data[m._private.cons.EVENT_DATA_KEY.ecid] = ecid
             event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SET_EXPERIENCE_CLOUD_ID, data)
             m._private.dispatchEvent(event)
+        end function,
+
+        getTaskNode: function() as object
+            taskNode = _adb_retrieveTaskNode()
+            return taskNode
+        end function,
+
+        destroy: function() as void
+            taskNode = _adb_retrieveTaskNode()
+            if taskNode <> invalid
+                taskNode.unobserveFieldScoped("responseEvent")
+            end if
+            GetGlobalAA()._adb_public_api = invalid
+            GetGlobalAA()._adb_main_task_node = invalid
         end function
 
         ' ********************************
