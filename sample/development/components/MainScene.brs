@@ -19,6 +19,9 @@ sub init()
   m.timer = m.top.findNode("MainTimer")
   m.timer.control = "start"
   m.timer.ObserveField("fire", "timerExecutor")
+  m.videoTimer = m.top.findNode("VideoTimer")
+  m.videoTimer.control = "none"
+  m.videoTimer.ObserveField("fire", "videoTimerExecutor")
   m.video = m.top.findNode("Video")
   setContent()
 
@@ -234,6 +237,7 @@ sub onVideoPlayerStateChange()
         }
       }
     })
+    m.videoTimer.control = "start"
   else if m.video.state = "stopped"
     ' m.aepSdk.mediaTrackSessionEnd()
     m.aepSdk.sendMediaEvent({
@@ -244,6 +248,7 @@ sub onVideoPlayerStateChange()
         }
       }
     })
+    m.videoTimer.control = "stop"
   else if m.video.state = "finished"
     ' m.aepSdk.mediaTrackComplete()
     m.aepSdk.sendMediaEvent({
@@ -283,6 +288,22 @@ sub onPositionChange()
   })
   m.video_position = m.video.position
   ' print
+end sub
+
+sub videoTimerExecutor()
+  print "===================="
+  print "Video timer started to fire a ping event on video position : " m.video.position
+  ' m.aepSdk.mediaUpdatePlayhead(m.video.position)
+  position = m.video_position
+  m.aepSdk.sendMediaEvent({
+    "xdm": {
+      "eventType": "media.ping",
+      "mediaCollection": {
+        "playhead": position,
+      }
+    }
+  })
+  m.video_position = m.video.position
 end sub
 
 ' Called when a key on the remote is pressed

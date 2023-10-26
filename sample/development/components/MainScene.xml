@@ -26,6 +26,12 @@ governing permissions and limitations under the License.-->
       duration="2"
     />
 
+    <Timer
+      id="VideoTimer"
+      repeat="true"
+      duration="1"
+    />
+
     <Video
       id="Video"
       width="1920"
