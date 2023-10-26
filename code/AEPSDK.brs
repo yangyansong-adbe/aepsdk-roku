@@ -19,7 +19,10 @@ function AdobeAEPSDKConstants() as object
     return {
         CONFIGURATION: {
             EDGE_CONFIG_ID: "edge.configId",
-            EDGE_DOMAIN: "edge.domain"
+            EDGE_DOMAIN: "edge.domain",
+            MEDIA_CHANNEL: "edgemedia.channel",
+            MEDIA_PLAYER_NAME: "edgemedia.playerName",
+            MEDIA_APP_VERSION: "edgemedia.appVersion",
         },
         LOG_LEVEL: {
             VERBOSE: 0,
@@ -27,7 +30,7 @@ function AdobeAEPSDKConstants() as object
             INFO: 2,
             WARNING: 3,
             ERROR: 4
-        }
+        },
     }
 end function
 
@@ -223,12 +226,79 @@ function AdobeAEPSDKInit() as object
             data[m._private.cons.EVENT_DATA_KEY.ecid] = ecid
             event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SET_EXPERIENCE_CLOUD_ID, data)
             m._private.dispatchEvent(event)
-        end function
+        end function,
+
+        ' ****************************************************************************************************
+        '                                           Media APIs
+        ' ****************************************************************************************************
+
+        createMediaSession: function(xdmData as object) as void
+            _adb_logDebug("API: _createMediaSession()")
+            ' TODO: validate input
+            m._private._currentPlayHead = 0
+            m._private.mediaSession.startNewSession()
+            m.sendMediaEvent(xdmData)
+
+        end function,
+
+        sendMediaEvent: function(xdmData as object) as void
+            _adb_logDebug("API: _sendMediaEvent()")
+            ' TODO: validate input
+            timestamp = _adb_ISO8601_timestamp()
+            sessionId = m._private.mediaSession.getClientSessionIdAndRecordAction(xdmData.xdm.eventType, timestamp, xdmData)
+
+            data = {
+                clientSessionId: sessionId,
+                timestampInISO8601: timestamp,
+                param: xdmData
+            }
+            event = _adb_RequestEvent(m._private.cons.PUBLIC_API.SEND_MEDIA_EVENT, data)
+            m._private.dispatchEvent(event)
+
+            if xdmData.xdm.eventType = "media.sessionEnd"
+                m._private.mediaSession.endSession()
+            end if
+        end function,
 
         ' ********************************
         ' Add private memebers below
         ' ********************************
         _private: {
+            mediaSession: {
+                _clientSessionId: invalid,
+                _trackActionQueue: [],
+                _currentPlayHead: 0,
+
+                startNewSession: function() as string
+                    m._clientSessionId = _adb_generate_UUID()
+                    m._trackActionQueue = []
+                    return m._clientSessionId
+                end function,
+
+                endSession: sub()
+                    m._clientSessionId = invalid
+
+                    lines = []
+                    lines.Push("We can start the validation process here:")
+                    lines.Push("The session is ended, the media action series is -> ")
+                    for each obj in m._trackActionQueue
+                        lines.Push("action: " + obj.action + ", timestamp: " + obj.timestamp + ", param: " + FormatJson(obj.param))
+                    end for
+                    output = lines.Join(chr(10))
+                    print output
+                    m._trackActionQueue = []
+                end sub,
+
+                getClientSessionIdAndRecordAction: function(action as string, timestamp = "" as string, param = {} as object) as string
+                    m._trackActionQueue.Push({
+                        action: action,
+                        timestamp: timestamp,
+                        param: param
+                    })
+                    return m._clientSessionId
+                end function,
+
+            },
             ' constants
             cons: _adb_InternalConstants(),
             ' for testing purpose

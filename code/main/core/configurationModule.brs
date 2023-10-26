@@ -23,6 +23,7 @@ function _adb_ConfigurationModule() as object
         CONFIG_KEY: AdobeAEPSDKConstants().CONFIGURATION,
         _edge_configId: invalid,
         _edge_domain: invalid,
+        _media_configuration: {},
         ' example config = {edge.configId:"1234567890", edge.domain:"xyz.net"}
         updateConfiguration: function(configuration as object) as void
             configId = _adb_optStringFromMap(configuration, m.CONFIG_KEY.EDGE_CONFIG_ID)
@@ -37,6 +38,18 @@ function _adb_ConfigurationModule() as object
             if not _adb_isEmptyOrInvalidString(domain) and regexPattern.isMatch(domain)
                 m._edge_domain = domain
             end if
+
+            ' Media
+
+            for each key in configuration.keys()
+                if _adb_isStringStartWith(key, "edgemedia.")
+                    m._media_configuration[key] = configuration[key]
+                end if
+            end for
+        end function,
+
+        getMediaConfiguration: function() as object
+            return m._media_configuration
         end function,
 
         getConfigId: function() as dynamic

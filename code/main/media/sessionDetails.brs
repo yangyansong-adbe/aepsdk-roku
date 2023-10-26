@@ -11,20 +11,4 @@
 ' *
 ' *****************************************************************************************
 
-' ********************************** MODULE: other utils **********************************
-
-function _adb_isArray(input as dynamic) as boolean
-    return input <> invalid and Type(input) = "roArray"
-end function
-
-function _adb_isEmptyOrInvalidArray(input as dynamic) as boolean
-    if input = invalid or Type(input) <> "roArray"
-        return true
-    end if
-
-    if input.count() = 0
-        return true
-    end if
-
-    return false
-end function
+' ****************************** MODULE: Session Details **********************************
