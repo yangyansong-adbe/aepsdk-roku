@@ -1,30 +1,65 @@
-# AEP Roku SDK API Usage
+# Adobe Experience Platform Roku SDK API Reference
 
 This document lists the APIs provided by AEP Roku SDK, along with code samples for API usage.
 
-- [AdobeAEPSDKInit](#AdobeAEPSDKInit)
-- [getVersion](#getVersion)
-- [setLogLevel](#setLogLevel)
-- [updateConfiguration](#updateConfiguration)
-- [sendEvent](#sendEvent)
-- [resetIdentities](#resetIdentities)
-- [(optional) setExperienceCloudId](#setExperienceCloudId)
-- [shutdown](#shutdown)
+- Core APIs
+  - [AdobeAEPSDKInit](#AdobeAEPSDKInit)
+  - [getVersion](#getVersion)
+  - [setLogLevel](#setLogLevel)
+  - [shutdown](#shutdown)
+  - [updateConfiguration](#updateConfiguration)
+- Consent APIs
+  - [setConsent](#setConsent)
+- Edge APIs
+  - [sendEvent](#sendEvent)
+- Identitiy APIs
+  - [getExperienceCloudId](#getExperienceCloudId)
+  - [resetIdentities](#resetIdentities)
+  - [(optional) setExperienceCloudId](#setExperienceCloudId)
+- Media APIs
+  - [createMediaSession](#createMediaSession)
+  - [sendMediaEvent](#sendMediaEvent)
 
----
+## Core APIs:
 
 ### AdobeAEPSDKInit
 
-Initialize the AEP Roku SDK and return the public API instance. `*` The following variables are reserved to hold the SDK instances in GetGlobalAA():
+> [!IMPORTANT]
+> The AEP task node performs the core logic of the AEP Roku SDK. Typically, a Roku project maintains only one instance of the AEP task node.
 
-- `GetGlobalAA()._adb_public_api`
-- `GetGlobalAA()._adb_main_task_node`
-- `GetGlobalAA()._adb_serviceProvider_instance`
+It's required to first call AdobeAEPSDKInit() without passing an argument within the scene script. It initializes a new AEP task node and creates an associated AEP Roku SDK instance. Then, the task node instance can be retrieved via the getTaskNode() API.
+
+For example:
+```brightscript
+sdkInstance = AdobeAEPSDKInit()
+adobeTaskNode = sdkInstance.getTaskNode()
+```
+
+To make this task node instance accessible in other components, appending it to the scene node is recommended.
+
+For example:
+```brightscript
+m.top.appendChild(adobeTaskNode)
+```
+
+The task node's ID is by default set to "adobeTaskNode". Then, retrieve it by ID and use it to create a new AEP Roku SDK instance in other components.
+
+For example:
+```brightscript
+adobeTaskNode = m.top.getScene().findNode("adobeTaskNode")
+sdkInstance = AdobeAEPSDKInit(adobeTaskNode)
+```
+
+> **Note**
+> The following variables are reserved to hold the AEP Roku SDK instances in GetGlobalAA():
+>- `GetGlobalAA()._adb_public_api`
+>- `GetGlobalAA()._adb_main_task_node`
+>- `GetGlobalAA()._adb_serviceProvider_instance`
 
 ##### Syntax
 
 ```brightscript
-function AdobeAEPSDKInit() as object
+function AdobeAEPSDKInit(taskNode = invalid as dynamic) as object
 ```
 
 - `@return instance as object : public API instance`
@@ -34,7 +69,6 @@ function AdobeAEPSDKInit() as object
 ```brightscript
 m.aepSdk = AdobeAEPSDKInit()
 ```
-
 ---
 
 ### getVersion
@@ -74,6 +108,24 @@ m.aepSdk.setLogLevel(ADB_CONSTANTS.LOG_LEVEL.VERBOSE)
 
 ---
 
+### shutdown
+
+Call this function to shut down the AEP Roku SDK and drop further API calls.
+
+##### Syntax
+
+```brightscript
+shutdown: function() as void
+```
+
+##### Example
+
+```brightscript
+m.aepSdk.shutdown();
+```
+
+---
+
 ### updateConfiguration
 
 > **Note**
@@ -81,10 +133,21 @@ m.aepSdk.setLogLevel(ADB_CONSTANTS.LOG_LEVEL.VERBOSE)
 
 #### Configuration Keys
 
-| Constants | Raw value | Required |
-| :-- | :--: | :--: |
-| `ADB_CONSTANTS.CONFIGURATION.EDGE_CONFIG_ID` | "edge.configId" | **Yes**
-| `ADB_CONSTANTS.CONFIGURATION.EDGE_DOMAIN` | "edge.domain" | **No**
+- Required for all APIs
+
+| Constants | Raw value | Type | Required |
+| :-- | :--: | :--: | :--: |
+| `ADB_CONSTANTS.CONFIGURATION.EDGE_CONFIG_ID` | "edge.configId" | String | **Yes**
+| `ADB_CONSTANTS.CONFIGURATION.EDGE_DOMAIN` | "edge.domain" | String | **No**
+| `ADB_CONSTANTS.CONFIGURATION.CONSENT_DEFAULT` | "consent.default" | Map | **No**
+
+- Required for Media tracking APIs
+
+| Constants | Raw value | Type | Required |
+| :-- | :--: | :--: | :--: |
+| `ADB_CONSTANTS.CONFIGURATION.MEDIA_CHANNEL` | "edgemedia.channel" | String | **Yes**
+| `ADB_CONSTANTS.CONFIGURATION.MEDIA_PLAYER_NAME` | "edgemedia.playerName" | String | **Yes**
+| `ADB_CONSTANTS.CONFIGURATION.MEDIA_APP_VERSION` | "edgemedia.appVersion" | String | **No**
 
 ##### Syntax
 
@@ -103,6 +166,16 @@ configuration = {}
 configuration[ADB_CONSTANTS.CONFIGURATION.EDGE_CONFIG_ID] = "<YOUR_CONFIG_ID>"
 configuration[ADB_CONSTANTS.CONFIGURATION.EDGE_DOMAIN] = "<YOUR_DOMAIN_NAME>"
 
+' This example sets the default consent to pending. You can later update the consent based on user preferences using the setConsent API.
+
+configuration[ADB_CONSTANTS.CONFIGURATION.CONSENT_DEFAULT] = {
+    "consents": {
+        "collect": {
+            "val": "p"
+        }
+    }
+}
+
 m.aepSdk.updateConfiguration(configuration)
 ```
 
@@ -110,7 +183,83 @@ The `EDGE_CONFIG_ID` value is presented as `Datastream ID` in the [Datastream de
 
 The `EDGE_DOMAIN` value is the first-party domain mapped to the Adobe-provisioned Edge Network domain. For more information, see this [documentation](https://developer.adobe.com/client-sdks/documentation/edge-network/#domain-configuration)
 
----
+## Consent APIs:
+
+### Configure default consent
+
+The default consent configuration determines how data collection consent is managed before invoking the [setConsent](#setconsent) API. This setting is particularly important to avoid unintentionally collecting data from users in regions where consent is required prior to data collection.
+
+By default, users are opted in for all purposes.
+
+#### Example: Setting default collect consent to pending before collecting actual user consent
+```brightscript
+ADB_CONSTANTS = AdobeAEPSDKConstants()
+
+configuration = {}
+
+' This example sets the default consent to pending. You can later update the consent based on user preferences using the setConsent API.
+
+configuration[ADB_CONSTANTS.CONFIGURATION.CONSENT_DEFAULT] = {
+    "consents": {
+        "collect": {
+            "val": "p"
+        }
+    }
+}
+
+m.aepSdk.updateConfiguration(configuration)
+```
+
+### setConsent
+
+Sends consent preferences to the Edge Network. For details on setting default consent before collecting user preferences, refer to the [Configure default consent](#configure-default-consent) section.
+
+> [!Important]
+> Please provide the entire payload with all the fields required by the [Adobe 2.0 Standard](https://github.com/adobe/xdm/blob/master/docs/reference/mixins/profile/profile-consents.schema.md).
+
+##### Syntax
+
+```brightscript
+setConsent: function(data as object) as void
+```
+
+- `@param data as object : an associative array that includes consent data to be sent to the edge network.`
+
+##### Example: setConsent using consent object following Adobe 2.0 Standard
+
+> [!Note]
+> The "time" field under "metadata" should contain ISO 8601 formatted with UTC(Z) time zone, millisecond precision date as shown below.
+
+> [!TIP]
+> Use the [`ToISOString("milliseconds")`](https://developer.roku.com/docs/references/brightscript/interfaces/ifdatetime.md#toisostringformat-as-string-as-string) to generate timestamp in the required format.
+
+```brightscript
+  currentDate = CreateObject("roDateTime")
+  timestampInISO8601 = currentDate.ToISOString("milliseconds")
+
+
+  collectConsentYes = {
+    "consent": [
+      {
+        "standard": "Adobe",
+        "version": "2.0",
+        "value": {
+          "metadata": {
+            ' pass timestamp in ISO format
+            "time": timestampInISO8601  ' sample value: "2023-10-03T17:23:04.443Z"
+          },
+          "collect": {
+            "val": "y"
+          }
+        }
+      }
+    ]
+  }
+
+  m.aepSdk.setConsent(collectConsentYes)
+```
+
+## Edge APIs:
 
 ### sendEvent
 
@@ -119,13 +268,17 @@ Sends an Experience event to Edge Network.
 ##### Syntax
 
 ```brightscript
-sendEvent: function(xdmData as object, callback = _adb_default_callback as function, context = invalid as dynamic) as void
+sendEvent: function(data as object, callback = _adb_default_callback as function, context = invalid as dynamic) as void
 ```
 
-- `@param data as object : xdm data following the XDM schema that is defined in the Schema Editor`
+- `@param data as object : an associative array that includes data to be sent with the event. It's structure should follow:`
+  - `data.xdm (required) - xdm data following the XDM schema that is defined in the Schema Editor.`
+  - `data.data (optional) - the free form non xdm data to be sent along with the event.`
 - `@param [optional] callback as function(context, result) : handle Edge response`
 - `@param [optional] context as dynamic : context to be passed to the callback function`
 
+> **Note**
+> SendEvent now supports datasream overrides. To Learn more about how to override datastream Id and/or datastream configuration refer [Sending Datastream overrides using sendEvent API](Tutorials/send-overrides-sendevent.md)
 
 > **Note**
 > The `sendEvent` API automatically attaches the following information with each Experience Event:
@@ -133,32 +286,57 @@ sendEvent: function(xdmData as object, callback = _adb_default_callback as funct
 > - `Implementation Details` - for more details see the [Implementation Details XDM field group](https://github.com/adobe/xdm/blob/master/components/datatypes/industry-verticals/implementationdetails.schema.json)
 
 > **Note**
-> If the SDK fails to receive the Edge response within 5 seconds, the callback function will not be executed.
-
+> If the AEP Roku SDK fails to receive the Edge response within 5 seconds, the callback function will not be executed.
 
 > **Note**
 > Variables are not case sensitive in [BrightScript](https://developer.roku.com/docs/references/brightscript/language/expressions-variables-types.md), so always use the `String literals` to present the XDM data **keys**.
 
-##### Example: sendEvent
+##### Example: sendEvent with XDM data
 
 ```brightscript
   m.aepSdk.sendEvent({
-    "eventType": "commerce.orderPlaced",
+    "xdm" : {
+      "eventType": "commerce.orderPlaced",
       "commerce": {
         .....
       }
+    }
+  })
+```
+
+##### Example: sendEvent with XDM data and non-XDM data
+
+```brightscript
+  m.aepSdk.sendEvent({
+    "xdm" : {
+      "eventType": "commerce.orderPlaced",
+      "commerce": {
+        .....
+      }
+    },
+    "data" : {
+      "customKey" : "customValue"
+    }
   })
 ```
 
 ##### Example: sendEvent with callback
 
 ```brightscript
-  m.aepSdk.sendEvent({
+  eventData = {
+    "xdm" : {
       "eventType": "commerce.orderPlaced",
       "commerce": {
         .....
       }
-  }, sub(context, result)
+    },
+    "data" : {
+      "customKey" : "customValue"
+    }
+  }
+
+
+  m.aepSdk.sendEvent(eventData, sub(context, result)
       print "callback result: "
       print result
       print context
@@ -200,33 +378,55 @@ customIdentityMap = {
 ```
 
 ```brightscript
-  m.aepSdk.sendEvent({
-    "eventType": "commerce.orderPlaced",
+  data = {
+    "xdm" : {
+      "eventType": "commerce.orderPlaced",
       "commerce": {
         .....
       },
+
       "identityMap": customIdentityMap
-  })
+    },
+
+    "data" : {
+      "customKey" : "customValue"
+    }
+  }
+
+
+  m.aepSdk.sendEvent(data)
 ```
 
----
+## Identity APIs
 
-### resetIdentities
-
-Call this function to reset the Adobe identities such as ECID from the SDK.
+### getExperienceCloudId
 
 ##### Syntax
 
 ```brightscript
-resetIdentities: function() as void
+getExperienceCloudId: function(callback as function, context = invalid as dynamic) as void
 ```
+- `@param  callback as function(context, result): callback which will be called with provided context and ecid value`
+- `@param [optional] context as dynamic : context to be passed to the callback function`
+
+- `@return callback containing ECID string`
+
+> **Note**
+> The `getExperienceCloudId` API will fetch a new ECID if no ECID is found in persistence.
+
+> **Note**
+> If the AEP Roku SDK fails to receive the Edge response within 5 seconds, the callback function will not be executed. If the network request to fetch a new ECID fails, the callback will be called with an invalid value for the ECID.
 
 ##### Example
 
 ```brightscript
-m.aepSdk.resetIdentities()
-```
+adbEcidCallback = sub(context, ecid)
+  ' Handle the returned ECID value
+  print "getECID(): " + FormatJson(ecid)
+end sub
 
+m.aepSdk.getExperienceCloudId(adbEcidCallback, m)
+```
 ---
 
 ### setExperienceCloudId
@@ -292,21 +492,146 @@ function onAdbmobileApiResponse() as void
       endif
     end function
 ```
-
 ---
 
-### shutdown
+### resetIdentities
 
-Call this function to shut down the AEP Roku SDK and drop further API calls.
+Call this function to reset the Adobe identities such as ECID from the AEP Roku SDK.
 
 ##### Syntax
 
 ```brightscript
-shutdown: function() as void
+resetIdentities: function() as void
 ```
 
 ##### Example
 
 ```brightscript
-m.aepSdk.shutdown();
+m.aepSdk.resetIdentities()
 ```
+
+---
+
+## Media APIs
+
+### createMediaSession
+
+Creates a new Media session with the provided XDM data. The XDM data event type should be `media.sessionStart`. If the `playerName`, `channel`, and `appVersion` are not provided in the XDM data, the AEP Roku SDK will use the global values passed via `updateConfiguration` API.
+
+About the XDM data structure, please refer to the [starting the session
+](https://experienceleague.adobe.com/docs/experience-platform/edge-network-server-api/media-edge-apis/getting-started.html?lang=en#start-session) document.
+
+##### Syntax
+
+```brightscript
+createMediaSession: function(xdmData as object, configuration = {} as object) as void
+```
+
+- `@param xdmData as object : the XDM data of type "media.sessionStart"`
+- `@param configuration as object : the session-level configuration`
+
+> [!NOTE]
+> If the ping interval is not set, the default interval of `10 sec` will be used.
+
+##### Configuration Keys
+
+| Constants | Raw value | Type | Range | Required |
+| :-- | :--: | :--: | :--: | :--: |
+| `ADB_CONSTANTS.MEDIA_SESSION_CONFIGURATION.CHANNEL` | "config.channel" | String | | **No**
+| `ADB_CONSTANTS.MEDIA_SESSION_CONFIGURATION.AD_PING_INTERVAL` | "config.adpinginterval" | Integer | 1~10 | **No**
+| `ADB_CONSTANTS.MEDIA_SESSION_CONFIGURATION.MAIN_PING_INTERVAL` | "config.mainpinginterval" | Integer | 10~50 | **No**
+
+> [!IMPORTANT]
+> SessionStart API requires [sessionDetails](https://github.com/adobe/xdm/blob/master/docs/reference/datatypes/sessiondetails.schema.md) fieldgroup with all the required fields present in the request payload.
+
+##### Example
+
+**createMediaSession**
+
+```brightscript
+sessionStartXDM = {
+  "xdm": {
+    "eventType": "media.sessionStart"
+     "mediaCollection": {
+      "playhead": 0,
+
+      "sessionDetails": {
+        "streamType": "video",
+        "friendlyName": "test_media_name",
+        "name": "test_media_id",
+        "length": 100,
+        "contentType": "vod"
+      }
+    }
+  }
+}
+
+m.aepSdk.createMediaSession(sessionStartXDM)
+```
+
+**createMediaSession with session configuration**
+
+```brightscript
+MEDIA_SESSION_CONFIGURATION = AdobeAEPSDKConstants().MEDIA_SESSION_CONFIGURATION
+
+sessionConfiguration = {}
+sessionConfiguration[MEDIA_SESSION_CONFIGURATION.CHANNEL] = "channel_name_for_current_session" ''' Overwrites channel configured in the AEP Roku SDK configuration.
+sessionConfiguration[MEDIA_SESSION_CONFIGURATION.AD_PING_INTERVAL] = 1 ''' Overwrites ad content ping interval to 1 second.
+sessionConfiguration[MEDIA_SESSION_CONFIGURATION.MAIN_PING_INTERVAL] = 30 ''' Overwrites main content ping interval to 30 seconds.
+
+sessionStartXDM = {
+  "xdm": {
+    "eventType": "media.sessionStart"
+     "mediaCollection": {
+      "playhead": 0,
+
+      "sessionDetails": {
+        "streamType": "video",
+        "friendlyName": "test_media_name",
+        "name": "test_media_id",
+        "length": 100,
+        "contentType": "vod"
+      }
+    }
+  }
+}
+
+m.aepSdk.createMediaSession(sessionStartXDM, sessionConfiguration)
+```
+
+---
+
+### sendMediaEvent
+
+> **Important**
+> Media session needs to be active before using `sendMediaEvent` API. Use `createMediaSession` API to create the session.
+
+About the XDM data structure, please refer to the [Media Edge API Documentation](https://experienceleague.adobe.com/docs/experience-platform/edge-network-server-api/media-edge-apis/getting-started.html?lang=en).
+
+> **Important**
+> Ensure that the `media.ping` event is sent at least once every second with the latest playhead value during the video playback. AEP Roku SDK relies on these pings to function properly.
+> Refer to [MainScene.brs](../sample/simple-videoplayer-channel/components/MainScene.brs) for information on how the sample app uses a timer to send ping events every second.
+
+##### Syntax
+
+```brightscript
+sendMediaEvent: function(xdmData as object) as void
+```
+
+##### Example
+
+Example to send `media.play` event using `sendMediaEvent()` API
+
+```brightscript
+playXDM = {
+  "xdm": {
+    "eventType": "media.play",
+    "mediaCollection": {
+      "playhead": <current_playhead>,
+    }
+  }
+}
+
+m.aepSdk.sendMediaEvent(playXDM)
+```
+
