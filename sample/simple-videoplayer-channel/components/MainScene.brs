@@ -24,7 +24,7 @@ sub init()
   buttonbox = m.ButtonGroup.boundingRect()
   centerx = (display.w - buttonbox.width) / 2
   centery = (display.h - buttonbox.height) / 2
-  m.ButtonGroup.translation = [ centerx, centery ]
+  m.ButtonGroup.translation = [centerx, centery]
 
   m.videoTimer = m.top.findNode("VideoTimer")
   m.videoTimer.control = "none"
@@ -76,12 +76,12 @@ sub _getECID()
   '----------------------------------------
   adbEcidCallback = sub(context, ecid)
     print "getECID(): " + FormatJson(ecid)
-        ' show result in dialog
+    ' show result in dialog
     context.dialog.visible = "true"
     context.dialog.message = FormatJson(ecid)
   end sub
 
-m.aepSdk.getExperienceCloudId(adbEcidCallback, m)
+  m.aepSdk.getExperienceCloudId(adbEcidCallback, m)
 end sub
 
 
@@ -102,7 +102,7 @@ sub _sendEventWithCallback()
   data["xdm"] = {
     "eventType": "page.view",
     "_obumobile5": {
-      "page" : {
+      "page": {
         "name": "RokuSampleApp.MainScreen.sendEventWithCallback"
       }
     },
@@ -149,20 +149,20 @@ end sub
 sub _setConsent(collectConsetValue as string)
   consentData = {
     "consent": [
-        {
-            "standard": "Adobe",
-            "version": "2.0",
-            "value": {
-                "collect": {
-                    "val": collectConsetValue
-                },
-                "metadata": {
-                   "time": _adb_ISO8601_timestamp()
-                }
-            }
+      {
+        "standard": "Adobe",
+        "version": "2.0",
+        "value": {
+          "collect": {
+            "val": collectConsetValue
+          },
+          "metadata": {
+            "time": _adb_ISO8601_timestamp()
+          }
         }
+      }
     ]
-}
+  }
 
   m.aepSdk.setConsent(consentData)
 end sub
@@ -347,13 +347,13 @@ sub onVideoPlayerStateChange()
   '--------------------
   ' Send Media events
   '--------------------
-  position = m.video_position
+  position% = m.video_position
   if m.video.state = "error"
     m.aepSdk.sendMediaEvent({
       "xdm": {
         "eventType": "media.error",
         "mediaCollection": {
-          "playhead": position,
+          "playhead": position%,
           "qoeDataDetails": {
             "bitrate": 35000,
             "droppedFrames": 30
@@ -370,7 +370,7 @@ sub onVideoPlayerStateChange()
       "xdm": {
         "eventType": "media.bufferStart",
         "mediaCollection": {
-          "playhead": position,
+          "playhead": position%,
         }
       }
     })
@@ -380,7 +380,7 @@ sub onVideoPlayerStateChange()
       "xdm": {
         "eventType": "media.play",
         "mediaCollection": {
-          "playhead": position,
+          "playhead": position%,
         }
       }
     })
@@ -390,7 +390,7 @@ sub onVideoPlayerStateChange()
       "xdm": {
         "eventType": "media.sessionEnd",
         "mediaCollection": {
-          "playhead": position,
+          "playhead": position%,
         }
       }
     })
@@ -400,7 +400,7 @@ sub onVideoPlayerStateChange()
       "xdm": {
         "eventType": "media.sessionComplete",
         "mediaCollection": {
-          "playhead": position,
+          "playhead": position%,
         }
       }
     })
@@ -410,7 +410,7 @@ sub onVideoPlayerStateChange()
       "xdm": {
         "eventType": "media.pauseStart",
         "mediaCollection": {
-          "playhead": position,
+          "playhead": position%,
         }
       }
     })
@@ -424,12 +424,12 @@ sub videoTimerExecutor()
   ' Send Media pings
   '--------------------
   print "Video timer started to fire a ping event on video position : " m.video.position
-  position = m.video_position
+  position% = m.video_position
   m.aepSdk.sendMediaEvent({
     "xdm": {
       "eventType": "media.ping",
       "mediaCollection": {
-        "playhead": position,
+        "playhead": position%,
       }
     }
   })
