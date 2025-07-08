@@ -772,7 +772,7 @@ function TS_SDK_integration() as object
                 ADB_assertTrue((debugInfo.edge.requestQueue <> invalid and debugInfo.edge.requestQueue.count() = 1), LINE_NUM, "assert requestQueue = 1")
                 queuedRequestId = debugInfo.edge.requestQueue[0]._requestId
                 ADB_assertTrue((queuedRequestId = eventid), LINE_NUM, ADB_generateErrorMessage("eventID should match the queued request", eventid, queuedRequestId))
-                end sub
+            end sub
 
             validator[eventIdForSecondSendEvent] = sub(debugInfo)
                 ' _adb_logInfo("start to validate setLogLevel operation with debugInfo: " + FormatJson(debugInfo))
@@ -798,6 +798,7 @@ function TS_SDK_integration() as object
                 jsonObj1 = networkRequest1.jsonObj
                 ADB_assertTrue((jsonObj1.events[0].xdm.key = "value1"), LINE_NUM, "assert networkRequest (1) is sent with correct xdm data.")
                 ADB_assertTrue((jsonObj1.xdm.identityMap = invalid), LINE_NUM, "assert networkRequest (1) is to sent without ecid.")
+                ADB_assertTrue((jsonObj1.xdm.identityMap = invalid), LINE_NUM, "assert networkRequest (1) is to sent without ecid.")
 
                 ' processQueuedRequests will not process further queued event (sendEvent 2) as ECID was not available for sendEvent 1
                 ' and response of SendEvent 1 will set the ECID and we need to process the response so that sendEvent 2 and all the other subsequent requests will have the ECID.
@@ -817,7 +818,8 @@ function TS_SDK_integration() as object
 
                 jsonObj1 = networkRequest1.jsonObj
                 ADB_assertTrue((jsonObj1.events[0].xdm.key = "value2"), LINE_NUM, "assert networkRequest (1) is to send Edge event")
-                ADB_assertTrue((jsonObj1.xdm.identityMap.ECID[0].id = ecid), LINE_NUM, "assert networkRequest (1) is to send Edge event with ecid")
+                ADB_assertTrue((FormatJson(jsonObj1.xdm).Instr("identitymap") = -1), LINE_NUM, "assert networkRequest (1) is not include all lower case identitymap string")
+                ADB_assertTrue((FormatJson(jsonObj1.xdm).Instr("identityMap") > 0), LINE_NUM, "assert networkRequest (1) is to include correct identityMap string")
 
                 ' Send event 3
                 networkRequest2 = debugInfo.networkRequests[1] ' sendEvent 3
@@ -901,9 +903,9 @@ function TS_SDK_integration() as object
                 "xdm": {
                     "eventType": "integrationTest.run",
                     "_obumobile5": {
-                      "page" : {
-                        "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamIdOverride)"
-                      }
+                        "page": {
+                            "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamIdOverride)"
+                        }
                     }
                 },
                 "data": {
@@ -940,7 +942,7 @@ function TS_SDK_integration() as object
                 networkRequest1 = debugInfo.networkRequests[0]
 
                 ' Verify URL contains datastreamIdOverride
-                ADB_assertTrue((networkRequest1.url.Instr("configId="+datastreamIdOverride) > 0), LINE_NUM, ADB_generateErrorMessage("assert networkRequest (1) url contains datastreamIdOverride value", "configId="+datastreamIdOverride, networkRequest1.url))
+                ADB_assertTrue((networkRequest1.url.Instr("configId=" + datastreamIdOverride) > 0), LINE_NUM, ADB_generateErrorMessage("assert networkRequest (1) url contains datastreamIdOverride value", "configId=" + datastreamIdOverride, networkRequest1.url))
                 ADB_assertTrue((networkRequest1.response.code = 200), LINE_NUM, ADB_generateErrorMessage("assert response code for network request (1)", 200, networkRequest1.response.code))
 
                 firstResponseJson = ParseJson(networkRequest1.response.body)
@@ -952,7 +954,7 @@ function TS_SDK_integration() as object
                 ADB_assertTrue((actualEventType = "integrationTest.run"), LINE_NUM, ADB_generateErrorMessage("XDM page data", "integrationTest.run", actualEventType))
 
                 expectedPageDataXDM = {
-                    "page" : {
+                    "page": {
                         "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamIdOverride)"
                     }
                 }
@@ -1002,24 +1004,24 @@ function TS_SDK_integration() as object
                 "xdm": {
                     "eventType": "integrationTest.run",
                     "_obumobile5": {
-                      "page" : {
-                        "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamConfigOverride)"
-                      }
+                        "page": {
+                            "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamConfigOverride)"
+                        }
                     }
                 },
                 "data": {
                     "testKey": "testValue"
                 },
                 "config": {
-                    "datastreamConfigOverride" : {
+                    "datastreamConfigOverride": {
                         "com_adobe_experience_platform": {
-                          "datasets": {
-                            "event": {
-                              "datasetId": m.datasetIdOverride
+                            "datasets": {
+                                "event": {
+                                    "datasetId": m.datasetIdOverride
+                                }
                             }
-                          }
                         }
-                      }
+                    }
                 }
             }
             aepSdk.sendEvent(data)
@@ -1048,7 +1050,7 @@ function TS_SDK_integration() as object
 
                 networkRequest1 = debugInfo.networkRequests[0]
                 ' Verify URL contains datastreamIdOverride
-                ADB_assertTrue((networkRequest1.url.Instr("configId="+configId) > 0), LINE_NUM, ADB_generateErrorMessage("assert networkRequest (1) url contains datastreamIdOverride value", "configId="+configId, networkRequest1.url))
+                ADB_assertTrue((networkRequest1.url.Instr("configId=" + configId) > 0), LINE_NUM, ADB_generateErrorMessage("assert networkRequest (1) url contains datastreamIdOverride value", "configId=" + configId, networkRequest1.url))
 
                 ADB_assertTrue((networkRequest1.response.code = 200), LINE_NUM, ADB_generateErrorMessage("assert response code for network request (1)", 200, networkRequest1.response.code))
                 firstResponseJson = ParseJson(networkRequest1.response.body)
@@ -1060,7 +1062,7 @@ function TS_SDK_integration() as object
                 ADB_assertTrue((actualEventType = "integrationTest.run"), LINE_NUM, ADB_generateErrorMessage("XDM page data", "integrationTest.run", actualEventType))
 
                 expectedPageDataXDM = {
-                    "page" : {
+                    "page": {
                         "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamConfigOverride)"
                     }
                 }
@@ -1078,7 +1080,7 @@ function TS_SDK_integration() as object
 
                 ' Verify meta map
                 expectedMeta = {
-                    "configOverrides":{
+                    "configOverrides": {
                         "com_adobe_experience_platform": {
                             "datasets": {
                                 "event": {
@@ -1113,9 +1115,9 @@ function TS_SDK_integration() as object
                 "xdm": {
                     "eventType": "integrationTest.run",
                     "_obumobile5": {
-                      "page" : {
-                        "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamIdAndConfigOverride)"
-                      }
+                        "page": {
+                            "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamIdAndConfigOverride)"
+                        }
                     }
                 },
                 "data": {
@@ -1123,15 +1125,15 @@ function TS_SDK_integration() as object
                 },
                 "config": {
                     "datastreamIdOverride": m.datastreamIdOverride,
-                    "datastreamConfigOverride" : {
+                    "datastreamConfigOverride": {
                         "com_adobe_experience_platform": {
-                          "datasets": {
-                            "event": {
-                              "datasetId": m.datasetIdOverride
+                            "datasets": {
+                                "event": {
+                                    "datasetId": m.datasetIdOverride
+                                }
                             }
-                          }
                         }
-                      }
+                    }
                 }
             }
             aepSdk.sendEvent(data)
@@ -1162,7 +1164,7 @@ function TS_SDK_integration() as object
                 networkRequest1 = debugInfo.networkRequests[0]
 
                 ' Verify URL contains datastreamIdOverride
-                ADB_assertTrue((networkRequest1.url.Instr("configId="+datastreamIdOverride) > 0), LINE_NUM, ADB_generateErrorMessage("assert networkRequest (1) url contains datastreamIdOverride value", "configId="+datastreamIdOverride, networkRequest1.url))
+                ADB_assertTrue((networkRequest1.url.Instr("configId=" + datastreamIdOverride) > 0), LINE_NUM, ADB_generateErrorMessage("assert networkRequest (1) url contains datastreamIdOverride value", "configId=" + datastreamIdOverride, networkRequest1.url))
                 ADB_assertTrue((networkRequest1.response.code = 200), LINE_NUM, ADB_generateErrorMessage("assert response code for network request (1)", 200, networkRequest1.response.code))
 
                 firstResponseJson = ParseJson(networkRequest1.response.body)
@@ -1174,7 +1176,7 @@ function TS_SDK_integration() as object
                 ADB_assertTrue((actualEventType = "integrationTest.run"), LINE_NUM, ADB_generateErrorMessage("XDM page data", "integrationTest.run", actualEventType))
 
                 expectedPageDataXDM = {
-                    "page" : {
+                    "page": {
                         "name": "RokuIntegrationTest(TC_SDK_sendEventWithDatastreamIdAndConfigOverride)"
                     }
                 }
@@ -1193,7 +1195,7 @@ function TS_SDK_integration() as object
 
                 ' Verify meta map
                 expectedMeta = {
-                    "configOverrides":{
+                    "configOverrides": {
                         "com_adobe_experience_platform": {
                             "datasets": {
                                 "event": {

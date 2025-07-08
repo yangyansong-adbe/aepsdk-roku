@@ -272,7 +272,7 @@ function _adb_EdgeRequestWorker(edgeResponseManager as object, consentState as o
             return networkResponse
         end function
 
-        _getDatastreamId: function(config as object, originalDatastreamId as String) as string
+        _getDatastreamId: function(config as object, originalDatastreamId as string) as string
             if _adb_isEmptyOrInvalidMap(config)
                 return originalDatastreamId
             end if
@@ -332,7 +332,7 @@ function _adb_EdgeRequestWorker(edgeResponseManager as object, consentState as o
 
             if not _adb_isEmptyOrInvalidString(ecid)
                 ' Add ECID to the xdm.identityMap
-                requestBody.xdm.identityMap = m._getIdentityMap(ecid)
+                requestBody.xdm["identityMap"] = m._getIdentityMap(ecid)
             else
                 ecidQuery = m._getECIDQueryPayload()
                 requestBody["query"] = ecidQuery.query
@@ -351,9 +351,9 @@ function _adb_EdgeRequestWorker(edgeResponseManager as object, consentState as o
 
         _createConsentRequestBody: function(consentData as object, ecid as dynamic, meta as object) as object
             requestBody = {
-                "query" : {
-                    "consent" : {
-                    "operation" : "update"
+                "query": {
+                    "consent": {
+                        "operation": "update"
                     }
                 },
                 "xdm": {
@@ -364,7 +364,7 @@ function _adb_EdgeRequestWorker(edgeResponseManager as object, consentState as o
 
             if not _adb_isEmptyOrInvalidString(ecid)
                 ' Add ECID to the xdm.identityMap
-                requestBody.xdm.identityMap = m._getIdentityMap(ecid)
+                requestBody.xdm["identityMap"] = m._getIdentityMap(ecid)
             else
                 ecidQuery = m._getECIDQueryPayload()
                 requestBody.query["identity"] = ecidQuery.query.identity
