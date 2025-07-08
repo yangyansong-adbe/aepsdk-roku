@@ -410,6 +410,9 @@ function AdobeAEPSDKInit(taskNode = invalid as dynamic) as object
 
             if _adb_containsPlayheadValue(xdmData)
                 playhead = _adb_extractPlayheadFromMediaXDMData(xdmData)
+                if playhead = -1 then
+                    _adb_logError("sendMediaEvent() - The provided playhead value is invalid.")
+                end if
                 m._private.mediaSession.updateCurrentPlayhead(playhead)
             end if
 
