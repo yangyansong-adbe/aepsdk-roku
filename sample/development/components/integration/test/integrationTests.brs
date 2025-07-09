@@ -798,7 +798,6 @@ function TS_SDK_integration() as object
                 jsonObj1 = networkRequest1.jsonObj
                 ADB_assertTrue((jsonObj1.events[0].xdm.key = "value1"), LINE_NUM, "assert networkRequest (1) is sent with correct xdm data.")
                 ADB_assertTrue((jsonObj1.xdm.identityMap = invalid), LINE_NUM, "assert networkRequest (1) is to sent without ecid.")
-                ADB_assertTrue((jsonObj1.xdm.identityMap = invalid), LINE_NUM, "assert networkRequest (1) is to sent without ecid.")
 
                 ' processQueuedRequests will not process further queued event (sendEvent 2) as ECID was not available for sendEvent 1
                 ' and response of SendEvent 1 will set the ECID and we need to process the response so that sendEvent 2 and all the other subsequent requests will have the ECID.

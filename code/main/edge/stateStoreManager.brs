@@ -70,6 +70,8 @@ function _adb_StateStoreManager() as object
                 return
             end if
 
+            ' When converting maxAge to milliseconds, it may exceed the maximum value of a 32-bit integer, then cause an integer overflow.
+            ' To fix this, now using a 64-bit longinteger instead.
             maxAgeSeconds& = payload.maxAge
             if not _adb_isPositiveWholeNumber(maxAgeSeconds&)
                 _adb_logDebug("_adb_StateStore::_setExpiryTime() - Invalid payload.maxAge value:(" + FormatJson(maxAgeSeconds&) + "). Deleting the state store entry.")

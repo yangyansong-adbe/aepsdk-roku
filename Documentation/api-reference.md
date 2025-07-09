@@ -612,6 +612,9 @@ About the XDM data structure, please refer to the [Media Edge API Documentation]
 > Ensure that the `media.ping` event is sent at least once every second with the latest playhead value during the video playback. AEP Roku SDK relies on these pings to function properly.
 > Refer to [MainScene.brs](../sample/simple-videoplayer-channel/components/MainScene.brs) for information on how the sample app uses a timer to send ping events every second.
 
+> **Important**
+> The `playhead` must be an integer. Other values will be treated as an invalid playhead.
+
 ##### Syntax
 
 ```brightscript
@@ -623,15 +626,15 @@ sendMediaEvent: function(xdmData as object) as void
 Example to send `media.play` event using `sendMediaEvent()` API
 
 ```brightscript
+playhead% = <current_playhead>
 playXDM = {
   "xdm": {
     "eventType": "media.play",
     "mediaCollection": {
-      "playhead": <current_playhead>,
+      "playhead": playhead%,
     }
   }
 }
 
 m.aepSdk.sendMediaEvent(playXDM)
 ```
-

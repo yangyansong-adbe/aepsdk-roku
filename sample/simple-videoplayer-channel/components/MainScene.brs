@@ -347,6 +347,9 @@ sub onVideoPlayerStateChange()
   '--------------------
   ' Send Media events
   '--------------------
+
+  ' The playhead is the current position of the video in seconds.
+  ' It should be an integer value. Other values will be treated as an invalid playhead.
   position% = m.video_position
   if m.video.state = "error"
     m.aepSdk.sendMediaEvent({
