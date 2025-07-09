@@ -613,7 +613,7 @@ About the XDM data structure, please refer to the [Media Edge API Documentation]
 > Refer to [MainScene.brs](../sample/simple-videoplayer-channel/components/MainScene.brs) for information on how the sample app uses a timer to send ping events every second.
 
 > **Important**
-> The `playhead` must be an integer. Other values will be treated as an invalid playhead.
+> The `playhead` must be a positive integer. Other values will be treated as an invalid playhead.
 
 ##### Syntax
 
