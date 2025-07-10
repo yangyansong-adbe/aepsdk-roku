@@ -178,7 +178,7 @@ sub TC_adb_StateStoreManager_processStateStoreHandle_validHandle()
         type: "state:store"
     }
     ' The second payload is used to verify a bug fix: 34128000 is about 1 year in seconds, there was a bug when using integer to calculate the expiry time.
-    ' (34128000 * 1000) exceeds the maximum value of a 32 - bit signed integer (2, 147, 483, 647), it will cause an integer overflow.
+    ' (34128000 * 1000) exceeds the maximum value of a 32-bit signed integer (2, 147, 483, 647), it will cause an integer overflow.
     ' The bug was fixed by using 64-bit longinteger to calculate the expiry time.
 
     stateStoreManager.processStateStoreHandle(handle)

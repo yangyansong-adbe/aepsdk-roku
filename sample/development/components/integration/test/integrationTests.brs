@@ -818,7 +818,7 @@ function TS_SDK_integration() as object
                 jsonObj1 = networkRequest1.jsonObj
                 ADB_assertTrue((jsonObj1.events[0].xdm.key = "value2"), LINE_NUM, "assert networkRequest (1) is to send Edge event")
                 ADB_assertTrue((FormatJson(jsonObj1.xdm).Instr("identitymap") = -1), LINE_NUM, "assert networkRequest (1) is not include all lower case identitymap string")
-                ADB_assertTrue((FormatJson(jsonObj1.xdm).Instr("identityMap") > 0), LINE_NUM, "assert networkRequest (1) is to include correct identityMap string")
+                ADB_assertTrue((FormatJson(jsonObj1.xdm).Instr("identityMap") > 0), LINE_NUM, "assert networkRequest (1) includes properly formatted identityMap string")
 
                 ' Send event 3
                 networkRequest2 = debugInfo.networkRequests[1] ' sendEvent 3
