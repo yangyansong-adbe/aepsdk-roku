@@ -33,11 +33,11 @@ sub TC_adb_StateStoreManager_Init_stateStorePersisted_notExpired()
     ' Mock persisted state store
     stateStoreMap = {
         "kndctr_1234_AdobeOrg_cluster": {
-            "payload" : {
-                    key: "kndctr_1234_AdobeOrg_cluster",
-                    value: "or2",
-                    maxAge: 1800
-                },
+            "payload": {
+                key: "kndctr_1234_AdobeOrg_cluster",
+                value: "or2",
+                maxAge: 1800
+            },
             "expiryTs": _adb_timestampInMillis() + 1000
         }
 
@@ -69,11 +69,11 @@ sub TC_adb_StateStoreManager_Init_stateStorePersisted_expired()
     ' Mock persisted state store
     stateStoreMap = {
         "kndctr_1234_AdobeOrg_cluster": {
-            "payload" : {
-                    key: "kndctr_1234_AdobeOrg_cluster",
-                    value: "or2",
-                    maxAge: 1
-                },
+            "payload": {
+                key: "kndctr_1234_AdobeOrg_cluster",
+                value: "or2",
+                maxAge: 1
+            },
             "expiryTs": _adb_timestampInMillis() - 1000
         }
     }
@@ -98,35 +98,35 @@ sub TC_adb_StateStoreManager_Init_stateStorePersisted_mixed()
     ' Mock persisted state store
     stateStoreMap = {
         "kndctr_1234_AdobeOrg_cluster": {
-            "payload" : {
-                    key: "kndctr_1234_AdobeOrg_cluster",
-                    value: "or2",
-                    maxAge: 1800
-                },
+            "payload": {
+                key: "kndctr_1234_AdobeOrg_cluster",
+                value: "or2",
+                maxAge: 1800
+            },
             "expiryTs": _adb_timestampInMillis() + 1000
         },
         "kndctr_1234_AdobeOrg_cluster2": {
-            "payload" : {
-                    key: "kndctr_1234_AdobeOrg_cluster2",
-                    value: "or3",
-                    maxAge: 1
-                },
+            "payload": {
+                key: "kndctr_1234_AdobeOrg_cluster2",
+                value: "or3",
+                maxAge: 1
+            },
             "expiryTs": _adb_timestampInMillis() - 1000
         },
         "kndctr_1234_AdobeOrg_cluster3": {
-            "payload" : {
-                    key: "kndctr_1234_AdobeOrg_cluster3",
-                    value: "or4",
-                    maxAge: 1800
-                },
+            "payload": {
+                key: "kndctr_1234_AdobeOrg_cluster3",
+                value: "or4",
+                maxAge: 1800
+            },
             "expiryTs": _adb_timestampInMillis() - 500
         },
         "kndctr_1234_AdobeOrg_cluster4": {
-            "payload" : {
-                    key: "kndctr_1234_AdobeOrg_cluster4",
-                    value: "or5",
-                    maxAge: 1800
-                },
+            "payload": {
+                key: "kndctr_1234_AdobeOrg_cluster4",
+                value: "or5",
+                maxAge: 1800
+            },
             "expiryTs": _adb_timestampInMillis() + 500
         }
 
@@ -168,15 +168,24 @@ sub TC_adb_StateStoreManager_processStateStoreHandle_validHandle()
                 key: "kndctr_1234_AdobeOrg_cluster",
                 value: "or2",
                 maxAge: 1800
+            },
+            {
+                key: "kndctr_1234_AdobeOrg_identity",
+                value: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxxxxxxxxxxxxxxx_xx_xxxxxx",
+                maxAge: 34128000
             }
         ],
         type: "state:store"
     }
+    ' The second payload is used to verify a bug fix: 34128000 is about 1 year in seconds, there was a bug when using integer to calculate the expiry time.
+    ' (34128000 * 1000) exceeds the maximum value of a 32-bit signed integer (2, 147, 483, 647), it will cause an integer overflow.
+    ' The bug was fixed by using 64-bit longinteger to calculate the expiry time.
 
     stateStoreManager.processStateStoreHandle(handle)
     actualStateStore = stateStoreManager.getStateStore()
 
-    UTF_assertEqual(actualStateStore, handle.payload, generateErrorMessage("State store", handle.payload, actualStateStore))
+    UTF_assertEqual(actualStateStore[0], handle.payload[1], generateErrorMessage("State store", handle.payload[1], actualStateStore[0]))
+    UTF_assertEqual(actualStateStore[1], handle.payload[0], generateErrorMessage("State store", handle.payload[0], actualStateStore[1]))
 end sub
 
 ' target: _adb_StateStoreManager_processStateStoreHandle()

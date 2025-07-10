@@ -46,7 +46,7 @@ function _adb_StateStoreManager() as object
         end function,
 
         processStateStoreHandle: function(handle as object) as void
-            _adb_logVerbose("_adb_StateStoreManager::processStateStoreHandle() - Extracting state store from the response handle(" + FormatJson(handle) + ")." )
+            _adb_logVerbose("_adb_StateStoreManager::processStateStoreHandle() - Extracting state store from the response handle(" + FormatJson(handle) + ").")
 
             if _adb_isEmptyOrInvalidMap(handle) or _adb_isEmptyOrInvalidArray(handle.payload)
                 return
@@ -70,16 +70,18 @@ function _adb_StateStoreManager() as object
                 return
             end if
 
-            maxAgeSeconds = payload.maxAge
-            if not _adb_isPositiveWholeNumber(maxAgeSeconds)
-                _adb_logDebug("_adb_StateStore::_setExpiryTime() - Invalid payload.maxAge value:(" + FormatJson(maxAgeSeconds) + "). Deleting the state store entry.")
+            ' When converting maxAge to milliseconds, it may exceed the maximum value of a 32-bit integer, then cause an integer overflow.
+            ' To fix this, now using a 64-bit longinteger instead.
+            maxAgeSeconds& = payload.maxAge
+            if not _adb_isPositiveWholeNumber(maxAgeSeconds&)
+                _adb_logDebug("_adb_StateStore::_setExpiryTime() - Invalid payload.maxAge value:(" + FormatJson(maxAgeSeconds&) + "). Deleting the state store entry.")
 
                 ' delete the state store entry if maxAge is 0 or less than 0
                 m._deleteStateStoreEntries([payload.key])
                 return
             end if
 
-            _expiryTSInMillis& = startTimeInMillis + (maxAgeSeconds * 1000)
+            _expiryTSInMillis& = startTimeInMillis + (maxAgeSeconds& * 1000)
 
             stateStoreEntryName = payload.key
             m._stateStoreMap[stateStoreEntryName] = {
@@ -124,12 +126,12 @@ function _adb_StateStoreManager() as object
             _adb_logVerbose("_adb_StateStoreManager::_deleteStateStoreEntries() - stateStore updated to: (" + FormatJson(m._stateStoreMap) + ").")
         end function
 
-        _isStateStoreEntryExpired: function(stateStoreEntry as object, currentTimeInMillis = _adb_timestampInMillis() as longinteger) as boolean
+        _isStateStoreEntryExpired: function(stateStoreEntry as object, currentTimeInMillis& = _adb_timestampInMillis() as longinteger) as boolean
             if not _adb_isPositiveWholeNumber(stateStoreEntry.expiryTS)
                 return true
             end if
 
-            return currentTimeInMillis > stateStoreEntry.expiryTS
+            return currentTimeInMillis& > stateStoreEntry.expiryTS
         end function
 
         _delete: function() as void
