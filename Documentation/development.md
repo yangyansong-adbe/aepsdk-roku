@@ -1,4 +1,4 @@
-# Roku SDK Release Process
+# Roku SDK Development
 
 ## Updating Version
 
@@ -6,7 +6,6 @@ To update the SDK version:
 
 1. Modify the `VERSION` constant in `code/main/common/version.brs`
 2. Update any related documentation
-3. Commit and tag the changes
 
 ## Release Steps
 
@@ -56,7 +55,7 @@ The sample app automatically integrates the built SDK:
 - **`make install-sdk`**: Extracts the SDK package and installs it into the sample app
 - **`make build`**: Compiles the sample app with the integrated SDK
 
-### Output Structure
+#### Output Structure
 
 ```
 ./out/
